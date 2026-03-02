@@ -121,44 +121,33 @@ class ScheduleDatabase:
         
         return sorted(result, key=lambda x: x["time"])
     
-def get_schedule_for_week(self, group: str, start_date: datetime) -> dict:
-    """Получить расписание на неделю"""
-    # Определяем границы недели (понедельник - воскресенье)
-    monday = start_date - timedelta(days=start_date.weekday())
-    sunday = monday + timedelta(days=6)
-    
-    # Добавляем отладку
-    logger.info(f"🔍 Поиск расписания для группы {group}")
-    logger.info(f"📅 Неделя: с {monday.strftime('%d.%m.%Y')} по {sunday.strftime('%d.%m.%Y')}")
-    
-    weekly = {day: [] for day in WEEKDAYS}
-    
-    for lesson in self.schedule:
-        if lesson["group"] != group:
-            continue
+    def get_schedule_for_week(self, group: str, start_date: datetime) -> dict:
+        """Получить расписание на неделю"""
+        # Определяем границы недели (понедельник - воскресенье)
+        monday = start_date - timedelta(days=start_date.weekday())
+        sunday = monday + timedelta(days=6)
         
-        # Парсим дату занятия
-        try:
-            lesson_date = datetime.strptime(lesson["date"], '%d.%m.%Y')
-            logger.info(f"📅 Занятие: {lesson['day']} {lesson['date']} - {lesson['time']}")
+        weekly = {day: [] for day in WEEKDAYS}
+        
+        for lesson in self.schedule:
+            if lesson["group"] != group:
+                continue
             
-            # Проверяем, попадает ли дата в нужную неделю
-            if monday <= lesson_date <= sunday:
-                day_name = lesson["day"]
-                if day_name in weekly:
-                    weekly[day_name].append(lesson)
-                    logger.info(f"✅ Добавлено: {day_name} {lesson['date']}")
-        except Exception as e:
-            logger.error(f"❌ Ошибка парсинга даты {lesson.get('date')}: {e}")
-            continue
-    
-    # Сортируем по времени
-    for day in weekly:
-        weekly[day] = sorted(weekly[day], key=lambda x: x["time"])
-        if weekly[day]:
-            logger.info(f"📅 {day}: {len(weekly[day])} занятий")
-    
-    return weekly
+            # Парсим дату занятия
+            try:
+                lesson_date = datetime.strptime(lesson["date"], '%d.%m.%Y')
+                if monday <= lesson_date <= sunday:
+                    day_name = lesson["day"]
+                    if day_name in weekly:
+                        weekly[day_name].append(lesson)
+            except:
+                continue
+        
+        # Сортируем по времени
+        for day in weekly:
+            weekly[day] = sorted(weekly[day], key=lambda x: x["time"])
+        
+        return weekly
 
 # ================== СОСТОЯНИЯ ==================
 class ScheduleStates(StatesGroup):
@@ -243,13 +232,14 @@ async def cmd_today(message: types.Message, state: FSMContext):
         return
     
     today = datetime.now()
+    day_name = WEEKDAYS[today.weekday()]
     lessons = db.get_schedule_for_date(group, today)
     
     if not lessons:
-        await message.answer(f"📅 {today.strftime('%d.%m.%Y')}\n___________________________________\n\nПар нет 🎉")
+        await message.answer(f"📅 {day_name}, {today.strftime('%d.%m')}\n___________________________________\n\nПар нет 🎉")
         return
     
-    text = f"📅 {today.strftime('%d.%m.%Y')}\n___________________________________\n"
+    text = f"📅 {day_name}, {today.strftime('%d.%m')}\n___________________________________\n"
     for i, lesson in enumerate(lessons):
         text += f"\n{lesson['time']}  📚"
         text += f"\n🏛 {lesson['room']}"
@@ -272,13 +262,14 @@ async def cmd_tomorrow(message: types.Message, state: FSMContext):
         return
     
     tomorrow = datetime.now() + timedelta(days=1)
+    day_name = WEEKDAYS[tomorrow.weekday()]
     lessons = db.get_schedule_for_date(group, tomorrow)
     
     if not lessons:
-        await message.answer(f"📅 {tomorrow.strftime('%d.%m.%Y')}\n___________________________________\n\nПар нет 🎉")
+        await message.answer(f"📅 {day_name}, {tomorrow.strftime('%d.%m')}\n___________________________________\n\nПар нет 🎉")
         return
     
-    text = f"📅 {tomorrow.strftime('%d.%m.%Y')}\n___________________________________\n"
+    text = f"📅 {day_name}, {tomorrow.strftime('%d.%m')}\n___________________________________\n"
     for i, lesson in enumerate(lessons):
         text += f"\n{lesson['time']}  📚"
         text += f"\n🏛 {lesson['room']}"
@@ -304,22 +295,16 @@ async def cmd_this_week(message: types.Message, state: FSMContext):
     monday = today - timedelta(days=today.weekday())
     weekly = db.get_schedule_for_week(group, today)
     
-    # Формируем заголовок
     text = f"📋 Текущая неделя (с {monday.strftime('%d.%m')})\n" + "=" * 40 + "\n"
     
-    # Проходим по ВСЕМ дням недели (Пн, Вт, Ср, Чт, Пт, Сб, Вс)
     for i, day in enumerate(WEEKDAYS):
         current_date = monday + timedelta(days=i)
         date_str = current_date.strftime('%d.%m')
+        day_lessons = weekly[day]
         
-        # Добавляем заголовок дня
         text += f"\n📅 {day}, {date_str}\n" + "-" * 30 + "\n"
         
-        # Получаем занятия для этого дня
-        day_lessons = weekly.get(day, [])
-        
         if day_lessons:
-            # Если есть занятия - показываем их
             for lesson in day_lessons:
                 text += f"\n{lesson['time']}  📚"
                 text += f"\n🏛 {lesson['room']}"
@@ -327,7 +312,6 @@ async def cmd_this_week(message: types.Message, state: FSMContext):
                 text += f"\n📚 {lesson['subject']}"
                 text += f"\n👨‍🏫 {lesson['teacher']}\n"
         else:
-            # Если нет занятий - пишем "Пар нет"
             text += "🎉 Пар нет\n"
     
     await message.answer(text)
@@ -346,22 +330,16 @@ async def cmd_next_week(message: types.Message, state: FSMContext):
     monday = next_week - timedelta(days=next_week.weekday())
     weekly = db.get_schedule_for_week(group, next_week)
     
-    # Формируем заголовок
     text = f"📌 Следующая неделя (с {monday.strftime('%d.%m')})\n" + "=" * 40 + "\n"
     
-    # Проходим по ВСЕМ дням недели
     for i, day in enumerate(WEEKDAYS):
         current_date = monday + timedelta(days=i)
         date_str = current_date.strftime('%d.%m')
+        day_lessons = weekly[day]
         
-        # Добавляем заголовок дня
         text += f"\n📅 {day}, {date_str}\n" + "-" * 30 + "\n"
         
-        # Получаем занятия для этого дня
-        day_lessons = weekly.get(day, [])
-        
         if day_lessons:
-            # Если есть занятия - показываем их
             for lesson in day_lessons:
                 text += f"\n{lesson['time']}  📚"
                 text += f"\n🏛 {lesson['room']}"
@@ -369,7 +347,6 @@ async def cmd_next_week(message: types.Message, state: FSMContext):
                 text += f"\n📚 {lesson['subject']}"
                 text += f"\n👨‍🏫 {lesson['teacher']}\n"
         else:
-            # Если нет занятий - пишем "Пар нет"
             text += "🎉 Пар нет\n"
     
     await message.answer(text)
@@ -430,6 +407,3 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     logger.info(f"🌐 Запуск Flask сервера на порту {port}")
     app.run(host="0.0.0.0", port=port)
-
-
-
