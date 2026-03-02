@@ -121,7 +121,7 @@ class ScheduleDatabase:
         
         return sorted(result, key=lambda x: x["time"])
     
-     def get_schedule_for_week(self, group: str, start_date: datetime) -> dict:
+    def get_schedule_for_week(self, group: str, start_date: datetime) -> dict:
         """Получить расписание на неделю (неделя начинается с понедельника)"""
         # Получаем понедельник текущей недели
         # weekday(): 0 - понедельник, 6 - воскресенье
@@ -425,6 +425,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     logger.info(f"🌐 Запуск Flask сервера на порту {port}")
     app.run(host="0.0.0.0", port=port)
+
 
 
 
