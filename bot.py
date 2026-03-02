@@ -121,33 +121,44 @@ class ScheduleDatabase:
         
         return sorted(result, key=lambda x: x["time"])
     
-    def get_schedule_for_week(self, group: str, start_date: datetime) -> dict:
-        """Получить расписание на неделю"""
-        # Определяем границы недели
-        monday = start_date - timedelta(days=start_date.weekday())
-        sunday = monday + timedelta(days=6)
+def get_schedule_for_week(self, group: str, start_date: datetime) -> dict:
+    """Получить расписание на неделю"""
+    # Определяем границы недели (понедельник - воскресенье)
+    monday = start_date - timedelta(days=start_date.weekday())
+    sunday = monday + timedelta(days=6)
+    
+    # Добавляем отладку
+    logger.info(f"🔍 Поиск расписания для группы {group}")
+    logger.info(f"📅 Неделя: с {monday.strftime('%d.%m.%Y')} по {sunday.strftime('%d.%m.%Y')}")
+    
+    weekly = {day: [] for day in WEEKDAYS}
+    
+    for lesson in self.schedule:
+        if lesson["group"] != group:
+            continue
         
-        weekly = {day: [] for day in WEEKDAYS}
-        
-        for lesson in self.schedule:
-            if lesson["group"] != group:
-                continue
+        # Парсим дату занятия
+        try:
+            lesson_date = datetime.strptime(lesson["date"], '%d.%m.%Y')
+            logger.info(f"📅 Занятие: {lesson['day']} {lesson['date']} - {lesson['time']}")
             
-            # Парсим дату занятия
-            try:
-                lesson_date = datetime.strptime(lesson["date"], '%d.%m.%Y')
-                if monday <= lesson_date <= sunday:
-                    day_name = lesson["day"]
-                    if day_name in weekly:
-                        weekly[day_name].append(lesson)
-            except:
-                continue
-        
-        # Сортируем по времени
-        for day in weekly:
-            weekly[day] = sorted(weekly[day], key=lambda x: x["time"])
-        
-        return weekly
+            # Проверяем, попадает ли дата в нужную неделю
+            if monday <= lesson_date <= sunday:
+                day_name = lesson["day"]
+                if day_name in weekly:
+                    weekly[day_name].append(lesson)
+                    logger.info(f"✅ Добавлено: {day_name} {lesson['date']}")
+        except Exception as e:
+            logger.error(f"❌ Ошибка парсинга даты {lesson.get('date')}: {e}")
+            continue
+    
+    # Сортируем по времени
+    for day in weekly:
+        weekly[day] = sorted(weekly[day], key=lambda x: x["time"])
+        if weekly[day]:
+            logger.info(f"📅 {day}: {len(weekly[day])} занятий")
+    
+    return weekly
 
 # ================== СОСТОЯНИЯ ==================
 class ScheduleStates(StatesGroup):
@@ -409,3 +420,4 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     logger.info(f"🌐 Запуск Flask сервера на порту {port}")
     app.run(host="0.0.0.0", port=port)
+
