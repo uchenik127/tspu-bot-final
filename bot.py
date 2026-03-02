@@ -121,14 +121,22 @@ class ScheduleDatabase:
         
         return sorted(result, key=lambda x: x["time"])
     
-    def get_schedule_for_week(self, group: str, start_date: datetime) -> dict:
-        """Получить расписание на неделю"""
-        # Определяем границы недели (понедельник - воскресенье)
-        monday = start_date - timedelta(days=start_date.weekday())
+     def get_schedule_for_week(self, group: str, start_date: datetime) -> dict:
+        """Получить расписание на неделю (неделя начинается с понедельника)"""
+        # Получаем понедельник текущей недели
+        # weekday(): 0 - понедельник, 6 - воскресенье
+        days_to_monday = start_date.weekday()  # сколько дней отнять до понедельника
+        monday = start_date - timedelta(days=days_to_monday)
+        # Устанавливаем время на 00:00:00 для корректного сравнения
+        monday = datetime(monday.year, monday.month, monday.day)
+        
+        # Воскресенье (последний день недели)
         sunday = monday + timedelta(days=6)
+        sunday = datetime(sunday.year, sunday.month, sunday.day, 23, 59, 59)
         
         print(f"\n🔍 ОТЛАДКА: Поиск для группы {group}")
         print(f"📅 Неделя: с {monday.strftime('%d.%m.%Y')} по {sunday.strftime('%d.%m.%Y')}")
+        print(f"📅 Исходная дата: {start_date.strftime('%d.%m.%Y')}, день недели: {WEEKDAYS[start_date.weekday()]}")
         
         weekly = {day: [] for day in WEEKDAYS}
         
@@ -144,14 +152,12 @@ class ScheduleDatabase:
             lesson_date = datetime.strptime(lesson["date"], '%d.%m.%Y')
             lesson_date_str = lesson_date.strftime('%d.%m.%Y')
             
-            print(f"   📅 Занятие: {lesson['day']} {lesson_date_str} - {lesson['time']}")
-            
             # Проверяем, попадает ли дата в нужную неделю
             if monday <= lesson_date <= sunday:
                 day_name = lesson["day"]
                 weekly[day_name].append(lesson)
                 added += 1
-                print(f"      ✅ ДОБАВЛЕНО в {day_name}")
+                print(f"   ✅ {day_name} {lesson_date_str}: {lesson['time']} - {lesson['subject']}")
         
         print(f"📊 Итого: {total_for_group} занятий для группы, добавлено {added}")
         
@@ -160,12 +166,12 @@ class ScheduleDatabase:
             weekly[day] = sorted(weekly[day], key=lambda x: x["time"])
         
         return weekly
-        
-        # Сортируем по времени
-        for day in weekly:
-            weekly[day] = sorted(weekly[day], key=lambda x: x["time"])
-        
-        return weekly
+            
+            # Сортируем по времени
+            for day in weekly:
+                weekly[day] = sorted(weekly[day], key=lambda x: x["time"])
+            
+            return weekly
 
 # ================== СОСТОЯНИЯ ==================
 class ScheduleStates(StatesGroup):
@@ -425,4 +431,5 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     logger.info(f"🌐 Запуск Flask сервера на порту {port}")
     app.run(host="0.0.0.0", port=port)
+
 
