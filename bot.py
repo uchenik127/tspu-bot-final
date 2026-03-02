@@ -166,12 +166,12 @@ class ScheduleDatabase:
             weekly[day] = sorted(weekly[day], key=lambda x: x["time"])
         
         return weekly
-            
-            # Сортируем по времени
-            for day in weekly:
-                weekly[day] = sorted(weekly[day], key=lambda x: x["time"])
-            
-            return weekly
+        
+        # Сортируем по времени
+        for day in weekly:
+            weekly[day] = sorted(weekly[day], key=lambda x: x["time"])
+        
+        return weekly
 
 # ================== СОСТОЯНИЯ ==================
 class ScheduleStates(StatesGroup):
@@ -431,5 +431,6 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     logger.info(f"🌐 Запуск Flask сервера на порту {port}")
     app.run(host="0.0.0.0", port=port)
+
 
 
