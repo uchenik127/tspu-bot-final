@@ -127,21 +127,39 @@ class ScheduleDatabase:
         monday = start_date - timedelta(days=start_date.weekday())
         sunday = monday + timedelta(days=6)
         
+        print(f"\n🔍 ОТЛАДКА: Поиск для группы {group}")
+        print(f"📅 Неделя: с {monday.strftime('%d.%m.%Y')} по {sunday.strftime('%d.%m.%Y')}")
+        
         weekly = {day: [] for day in WEEKDAYS}
+        
+        # Счетчики
+        total_for_group = 0
+        added = 0
         
         for lesson in self.schedule:
             if lesson["group"] != group:
                 continue
             
-            # Парсим дату занятия
-            try:
-                lesson_date = datetime.strptime(lesson["date"], '%d.%m.%Y')
-                if monday <= lesson_date <= sunday:
-                    day_name = lesson["day"]
-                    if day_name in weekly:
-                        weekly[day_name].append(lesson)
-            except:
-                continue
+            total_for_group += 1
+            lesson_date = datetime.strptime(lesson["date"], '%d.%m.%Y')
+            lesson_date_str = lesson_date.strftime('%d.%m.%Y')
+            
+            print(f"   📅 Занятие: {lesson['day']} {lesson_date_str} - {lesson['time']}")
+            
+            # Проверяем, попадает ли дата в нужную неделю
+            if monday <= lesson_date <= sunday:
+                day_name = lesson["day"]
+                weekly[day_name].append(lesson)
+                added += 1
+                print(f"      ✅ ДОБАВЛЕНО в {day_name}")
+        
+        print(f"📊 Итого: {total_for_group} занятий для группы, добавлено {added}")
+        
+        # Сортируем по времени
+        for day in weekly:
+            weekly[day] = sorted(weekly[day], key=lambda x: x["time"])
+        
+        return weekly
         
         # Сортируем по времени
         for day in weekly:
@@ -407,3 +425,4 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     logger.info(f"🌐 Запуск Flask сервера на порту {port}")
     app.run(host="0.0.0.0", port=port)
+
