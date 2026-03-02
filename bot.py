@@ -306,24 +306,26 @@ async def cmd_this_week(message: types.Message, state: FSMContext):
     
     text = f"📋 Текущая неделя (с {monday.strftime('%d.%m')})\n" + "=" * 40 + "\n"
     
-    has_lessons = False
+    # Проходим по ВСЕМ дням недели, даже если нет занятий
     for i, day in enumerate(WEEKDAYS):
         day_lessons = weekly[day]
         current_date = monday + timedelta(days=i)
+        date_str = current_date.strftime('%d.%m')
+        
+        # Всегда показываем день с датой
+        text += f"\n📅 {day}, {date_str}\n" + "-" * 30 + "\n"
         
         if day_lessons:
-            has_lessons = True
-            text += f"\n📅 {day}, {current_date.strftime('%d.%m')}\n" + "-" * 30 + "\n"
-            
+            # Если есть занятия - показываем их
             for lesson in day_lessons:
                 text += f"\n{lesson['time']}  📚"
                 text += f"\n🏛 {lesson['room']}"
                 text += f"\n📖 {lesson['type']}"
                 text += f"\n📚 {lesson['subject']}"
                 text += f"\n👨‍🏫 {lesson['teacher']}\n"
-    
-    if not has_lessons:
-        text += "\nНа этой неделе пар нет 🎉"
+        else:
+            # Если нет занятий - пишем "Пар нет"
+            text += "🎉 Пар нет\n"
     
     await message.answer(text)
 
@@ -343,24 +345,24 @@ async def cmd_next_week(message: types.Message, state: FSMContext):
     
     text = f"📌 Следующая неделя (с {monday.strftime('%d.%m')})\n" + "=" * 40 + "\n"
     
-    has_lessons = False
+    # Проходим по ВСЕМ дням недели
     for i, day in enumerate(WEEKDAYS):
         day_lessons = weekly[day]
         current_date = monday + timedelta(days=i)
+        date_str = current_date.strftime('%d.%m')
+        
+        # Всегда показываем день с датой
+        text += f"\n📅 {day}, {date_str}\n" + "-" * 30 + "\n"
         
         if day_lessons:
-            has_lessons = True
-            text += f"\n📅 {day}, {current_date.strftime('%d.%m')}\n" + "-" * 30 + "\n"
-            
             for lesson in day_lessons:
                 text += f"\n{lesson['time']}  📚"
                 text += f"\n🏛 {lesson['room']}"
                 text += f"\n📖 {lesson['type']}"
                 text += f"\n📚 {lesson['subject']}"
                 text += f"\n👨‍🏫 {lesson['teacher']}\n"
-    
-    if not has_lessons:
-        text += "\nНа следующей неделе пар нет 🎉"
+        else:
+            text += "🎉 Пар нет\n"
     
     await message.answer(text)
 
@@ -420,4 +422,5 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     logger.info(f"🌐 Запуск Flask сервера на порту {port}")
     app.run(host="0.0.0.0", port=port)
+
 
